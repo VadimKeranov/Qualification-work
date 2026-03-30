@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # --- 1. База для Auth Service (Старая) ---
+  db_auth:
+    image: postgres:15
+    container_name: auth_db_container
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: auth_db
+    ports:
+      - "5432:5432"  # Стандартный порт
+    volumes:
+      - postgres_auth_data:/var/lib/postgresql/data
+    networks:
+      - app_network
+
+  # --- 2. База для Profile Service (НОВАЯ) ---
+  db_profile:
+    image: postgres:15
+    container_name: profile_db_container
+    restart: always
+    environment:
+      POSTGRES_USER: profile_user      # Пользователь для профилей
+      POSTGRES_PASSWORD: profile_password
+      POSTGRES_DB: profile_db          # Имя базы
+    ports:
+      - "5433:5432"  # ВАЖНО: На компьютере это порт 5433, внутри контейнера 5432
+    volumes:
+      - postgres_profile_data:/var/lib/postgresql/data
+    networks:
+      - app_network
+
+  vacancy_db:
+    image: postgres:15
+    container_name: vacancy_db_container
+    ports:
+      - "5434:5432"  # <-- Порт 5434, чтобы не конфликтовать с другими
+    environment:
+      POSTGRES_USER: vacancy_user
+      POSTGRES_PASSWORD: vacancy_password
+      POSTGRES_DB: vacancy_db
+    volumes:
+      - vacancy_db_data:/var/lib/postgresql/data
+    networks:
+      - app_network
+
+  # --- 3. RabbitMQ (Брокер сообщений) ---
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq_container
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"   # Порт для общения сервисов
+      - "15672:15672" # Веб-интерфейс (http://localhost:15672)
+    networks:
+      - app_network
+
+networks:
+  app_network:
+    driver: bridge
+
+volumes:
+  postgres_auth_data:
+  postgres_profile_data:
+  vacancy_db_data:
