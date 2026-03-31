@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import Vacancy
-from app.schemas.vacancy import VacancyCreate
+from app.vacancies.schemas import VacancyCreate
 
 class VacancyRepository:
 

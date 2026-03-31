@@ -1,6 +1,28 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from app.vacancy_routes import router as vacancy_router
+from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="Vacancy Service")
+from app.vacancies.routes import router as vacancies_router
+from app.db.database import engine
+from app.db.models import Base
 
-app.include_router(vacancy_router)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # При старте: создаем таблицы
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+
+app = FastAPI(title="Vacancy Service", lifespan=lifespan)
+
+# CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Подключаем роутер
+app.include_router(vacancies_router)

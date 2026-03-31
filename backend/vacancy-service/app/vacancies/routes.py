@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
-from app.db.database import get_db
-from app.schemas.vacancy import VacancyCreate, VacancyResponse
-from app.vacancy_service import VacancyService
-from app.utils.security import get_current_user_payload  # Подставьте свой путь
+from app.core.dependencies import get_db
+from app.vacancies.schemas import VacancyCreate, VacancyResponse
+from app.vacancies.service import VacancyService
+from app.utils.security import get_current_user_payload
 
 router = APIRouter(prefix="/vacancies", tags=["Vacancies"])
 

@@ -1,7 +1,7 @@
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.vacancy_repository import VacancyRepository
-from app.schemas.vacancy import VacancyCreate
+from app.vacancies.repository import VacancyRepository
+from app.vacancies.schemas import VacancyCreate
 
 class VacancyService:
     @staticmethod
