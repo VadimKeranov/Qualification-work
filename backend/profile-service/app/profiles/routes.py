@@ -1,19 +1,25 @@
-import shutil
-import uuid
-
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from typing import Union
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Response
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.dependencies import get_db
 from app.utils.security import get_current_user_payload
-from app.profiles.schemas import JobSeekerResponse, JobSeekerUpdate, CompanyResponse, CompanyUpdate, CompanyProfileWithVacancies
+from app.profiles.schemas import (
+    JobSeekerResponse, 
+    JobSeekerUpdate, 
+    CompanyResponse, 
+    CompanyUpdate, 
+    CompanyProfileWithVacancies
+)
 from app.profiles.service import ProfileService
-from app.profiles.repository import ProfileRepository
 
+router = APIRouter(tags=["Profiles"])
 
-router = APIRouter(prefix="/profiles", tags=["Profiles"])
+# --- Роуты для Соискателя (Job Seeker) ---
 
-@router.get("/seeker/me", response_model=JobSeekerResponse)
+@router.get("/seeker/me", response_model=Union[JobSeekerResponse, None])
 async def get_my_seeker_profile(
+        response: Response,
         payload: dict = Depends(get_current_user_payload),
         session: AsyncSession = Depends(get_db)
 ):
@@ -23,9 +29,9 @@ async def get_my_seeker_profile(
 
     profile = await ProfileService.get_my_seeker_profile(session, user_id)
     if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found")
+        response.status_code = 200 # Явно указываем, что все ОК
+        return None # Возвращаем null, если профиля нет
     return profile
-
 
 @router.put("/seeker/me", response_model=JobSeekerResponse)
 async def update_my_seeker_profile(
@@ -36,25 +42,26 @@ async def update_my_seeker_profile(
     user_id = payload.get("id")
     if not user_id:
         raise HTTPException(status_code=401, detail="User ID not found in token")
-
     return await ProfileService.update_my_seeker_profile(session, user_id, data)
 
+# --- Роуты для Компании (Company) ---
 
-@router.get("/company/me", response_model=CompanyResponse)
+@router.get("/company/me", response_model=Union[CompanyProfileWithVacancies, None])
 async def get_my_company_profile(
+        response: Response,
         payload: dict = Depends(get_current_user_payload),
         session: AsyncSession = Depends(get_db)
 ):
-
     user_id = payload.get("id")
     if not user_id:
         raise HTTPException(status_code=401, detail="User ID not found in token")
 
     profile = await ProfileService.get_my_company_profile(session, user_id)
+    
     if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found")
+        response.status_code = 200 # Явно указываем, что все ОК
+        return None # Возвращаем null, если профиля нет
     return profile
-
 
 @router.put("/company/me", response_model=CompanyResponse)
 async def update_my_company_profile(
@@ -65,67 +72,49 @@ async def update_my_company_profile(
     user_id = payload.get("id")
     if not user_id:
         raise HTTPException(status_code=401, detail="User ID not found in token")
-
     return await ProfileService.update_my_company_profile(session, user_id, data)
 
 
 @router.post("/seeker/me/upload-photo")
-async def upload_seeker_photo(
+async def upload_seeker_photo_route(
         file: UploadFile = File(...),
         payload: dict = Depends(get_current_user_payload),
         session: AsyncSession = Depends(get_db)
 ):
     user_id = payload.get("id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User ID not found in token")
 
-    # Генерируем уникальное имя файла
-    ext = file.filename.split(".")[-1]
-    filename = f"user_{user_id}_{uuid.uuid4().hex[:8]}.{ext}"
-    filepath = f"uploads/photos/{filename}"
-
-    # Сохраняем файл на диск
-    with open(filepath, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    # Обновляем профиль в БД
-    profile = await ProfileService.get_my_seeker_profile(session, user_id)
-    if profile:
-        profile.photo_url = f"/profiles/{filepath}"
-        await session.commit()
-
-    return {"status": "success", "photo_url": f"/profiles/{filepath}"}
+    # Делегируем всю работу сервису
+    return await ProfileService.upload_seeker_photo(session, user_id, file)
 
 
 @router.post("/seeker/me/upload-resume")
-async def upload_seeker_resume(
+async def upload_seeker_resume_route(
         file: UploadFile = File(...),
         payload: dict = Depends(get_current_user_payload),
         session: AsyncSession = Depends(get_db)
 ):
     user_id = payload.get("id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User ID not found in token")
 
-    # 1. Проверяем лимит (не более 3 резюме)
-    resumes_count = await ProfileRepository.count_resumes(session, user_id)
-    if resumes_count >= 3:
-        raise HTTPException(status_code=400, detail="Достигнут лимит: максимум 3 резюме.")
+    return await ProfileService.upload_seeker_resume(session, user_id, file)
 
-    ext = file.filename.split(".")[-1]
-    if ext.lower() not in ["pdf", "doc", "docx"]:
-        raise HTTPException(status_code=400, detail="Только файлы PDF, DOC или DOCX.")
 
-    # 2. Ленивое создание: если профиля еще нет - создаем пустой
-    profile = await ProfileRepository.get_seeker_by_user_id(session, user_id)
-    if not profile:
-        await ProfileRepository.upsert_seeker(session, user_id, JobSeekerUpdate())
+@router.delete("/seeker/me/resumes/{resume_id}")
+async def delete_seeker_resume_route(
+        resume_id: int,
+        payload: dict = Depends(get_current_user_payload),
+        session: AsyncSession = Depends(get_db)
+):
+    user_id = payload.get("id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User ID not found in token")
 
-    # 3. Сохраняем файл физически
-    filename = f"resume_{user_id}_{uuid.uuid4().hex[:8]}.{ext}"
-    filepath = f"uploads/resumes/{filename}"
+    success = await ProfileService.delete_resume(session, resume_id, user_id)
 
-    with open(filepath, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    if not success:
+        raise HTTPException(status_code=404, detail="Резюме не найдено")
 
-    # 4. Сохраняем запись в новую таблицу
-    file_url = f"/profiles/{filepath}"
-    await ProfileRepository.add_resume(session, user_id, file_url, file.filename)
-
-    return {"status": "success", "resume_file_url": file_url, "file_name": file.filename}
+    return {"message": "Резюме удалено"}

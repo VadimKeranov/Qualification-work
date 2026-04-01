@@ -8,10 +8,10 @@ from app.profiles.routes import router as profiles_router
 from app.core.messaging import EventConsumer
 from app.db.session import engine
 from app.db.models import Base
+from app.config import settings # <--- Импортируем settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # При старте: создаем таблицы и запускаем потребителя в фоне
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     
@@ -19,23 +19,20 @@ async def lifespan(app: FastAPI):
     
     yield
     
-    # При остановке: отменяем задачу потребителя
     consumer_task.cancel()
 
 
 app = FastAPI(title="Profile Service", lifespan=lifespan)
 
-# CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.ALLOWED_ORIGINS.split(","), # <--- Используем settings
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
-# Статика для фото и резюме
 app.mount("/profiles/uploads", StaticFiles(directory="uploads"), name="uploads")
 
-# Подключаем роутер
-app.include_router(profiles_router)
+
+app.include_router(profiles_router, prefix="/profiles")

@@ -22,3 +22,10 @@
     /build
 
     .poetry/
+
+
+    uploads/photos/*
+    uploads/resumes/*
+
+    !uploads/photos/.gitkeep
+    !uploads/resumes/.gitkeep

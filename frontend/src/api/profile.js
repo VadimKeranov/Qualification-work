@@ -76,3 +76,13 @@ export const getCompanyProfile = async () => {
     const response = await instance.get("/profiles/company/me");
     return response.data;
 };
+
+export const deleteResume = async (token, resumeId) => {
+  const response = await fetch(`${API_URL}/profiles/seeker/me/resumes/${resumeId}`, {
+    method: "DELETE",
+    headers: { "Authorization": `Bearer ${token}` },
+  });
+
+  if (!response.ok) throw new Error("Ошибка при удалении резюме");
+  return response.json();
+};

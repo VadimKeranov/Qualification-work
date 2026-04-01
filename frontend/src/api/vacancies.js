@@ -2,7 +2,7 @@ import { API_URL } from "./config";
 
 // Получить все вакансии (публично)
 export const getAllVacancies = async () => {
-  const response = await fetch(`${API_URL}/vacancies/`, {
+  const response = await fetch(`${API_URL}/vacancies`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",

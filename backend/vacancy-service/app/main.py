@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.vacancies.routes import router as vacancies_router
 from app.db.database import engine
 from app.db.models import Base
+from app.config import settings # <--- Импортируем settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -18,10 +19,10 @@ app = FastAPI(title="Vacancy Service", lifespan=lifespan)
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.ALLOWED_ORIGINS.split(","), # <--- Используем settings
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 # Подключаем роутер

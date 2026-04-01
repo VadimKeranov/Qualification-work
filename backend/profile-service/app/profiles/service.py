@@ -1,51 +1,74 @@
+import os
+import uuid
+from fastapi import UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.profiles.repository import ProfileRepository
-from app.profiles.schemas import JobSeekerUpdate, CompanyUpdate, CompanyProfileWithVacancies
+from app.profiles.schemas import JobSeekerUpdate, CompanyUpdate
 
-import httpx
+UPLOAD_DIR = "uploads"
+PHOTO_DIR = os.path.join(UPLOAD_DIR, "photos")
+RESUME_DIR = os.path.join(UPLOAD_DIR, "resumes")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 class ProfileService:
     @staticmethod
     async def get_my_seeker_profile(session: AsyncSession, user_id: int):
         return await ProfileRepository.get_seeker_by_user_id(session, user_id)
 
+
     @staticmethod
     async def update_my_seeker_profile(session: AsyncSession, user_id: int, data: JobSeekerUpdate):
         return await ProfileRepository.upsert_seeker(session, user_id, data)
+
 
     @staticmethod
     async def get_my_company_profile(session: AsyncSession, user_id: int):
         return await ProfileRepository.get_company_by_user_id(session, user_id)
 
+
     @staticmethod
     async def update_my_company_profile(session: AsyncSession, user_id: int, data: CompanyUpdate):
         return await ProfileRepository.upsert_company(session, user_id, data)
 
+
     @staticmethod
-    async def get_my_company_profile_with_vacancies(session: AsyncSession, user_id: int):
-        # 1. Получаем профиль компании из нашей БД
-        profile = await ProfileRepository.get_company_by_user_id(session, user_id)
-        if not profile:
-            return None
+    async def delete_resume(session: AsyncSession, resume_id: int, user_id: int):
+        return await ProfileRepository.delete_resume(session, resume_id, user_id)
 
-        # 2. Асинхронно запрашиваем вакансии у vacancy-service
-        vacancies = []
-        try:
-            # Мы знаем company_id, так как он совпадает с user_id в нашей архитектуре
-            # В реальном мире здесь будет URL из конфига
-            async with httpx.AsyncClient() as client:
-                response = await client.get(f"http://localhost:8001/vacancies/by-company/{profile.user_id}")
-                # Убедитесь, что порт 8001 верный для vacancy-service
 
-                if response.status_code == 200:
-                    vacancies = response.json()
-        except httpx.RequestError as e:
-            # Если vacancy-service недоступен, мы не падаем, а просто логируем ошибку
-            # и возвращаем профиль с пустым списком вакансий.
-            print(f"Could not fetch vacancies: {e}")
+    @staticmethod
+    async def upload_seeker_photo(session: AsyncSession, user_id: int, file: UploadFile):
+        ext = file.filename.split(".")[-1]
+        filename = f"{uuid.uuid4()}.{ext}"
 
-        # 3. Собираем финальный ответ
-        response_data = profile.__dict__
-        response_data["vacancies"] = vacancies
+        # 2. Сохраняем файл именно в папку PHOTOS
+        filepath = os.path.join(PHOTO_DIR, filename)
 
-        return CompanyProfileWithVacancies.model_validate(response_data)
+        content = await file.read()
+        with open(filepath, "wb") as f:
+            f.write(content)
+
+        # 3. Формируем правильный URL с учетом папки photos
+        file_url = f"http://localhost:8000/profiles/uploads/photos/{filename}"
+
+        # Обновляем базу данных
+        await ProfileRepository.update_photo_url(session, user_id, file_url)
+        return {"message": "Фото успешно загружено", "photo_url": file_url}
+
+    @staticmethod
+    async def upload_seeker_resume(session: AsyncSession, user_id: int, file: UploadFile):
+        ext = file.filename.split(".")[-1]
+        filename = f"{uuid.uuid4()}.{ext}"
+
+        # 2. Сохраняем файл именно в папку RESUMES
+        filepath = os.path.join(RESUME_DIR, filename)
+
+        content = await file.read()
+        with open(filepath, "wb") as f:
+            f.write(content)
+
+        # 3. Формируем правильный URL с учетом папки resumes
+        file_url = f"http://localhost:8000/profiles/uploads/resumes/{filename}"
+
+        await ProfileRepository.add_resume(session, user_id, file_url, file.filename)
+        return {"message": "Резюме успешно загружено", "file_url": file_url}
