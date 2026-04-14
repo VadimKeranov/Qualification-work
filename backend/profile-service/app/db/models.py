@@ -59,3 +59,18 @@ class CompanyProfile(Base):
 
     # Контактный телефон
     contact_phone: Mapped[Optional[str]]
+
+
+class Region(Base):
+    __tablename__ = "regions"
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False, unique=True) # "Одеська область"
+    localities = relationship("Locality", back_populates="region")
+
+class Locality(Base):
+    __tablename__ = "localities"
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False, index=True) # Название города/села
+    type = Column(String) # "Місто", "Село", "СМТ"
+    region_id = Column(Integer, ForeignKey("regions.id"))
+    region = relationship("Region", back_populates="localities")

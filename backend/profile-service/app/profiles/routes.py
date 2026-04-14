@@ -118,3 +118,40 @@ async def delete_seeker_resume_route(
         raise HTTPException(status_code=404, detail="Резюме не найдено")
 
     return {"message": "Резюме удалено"}
+
+
+@router.post("/company/{company_id}", response_model=CompanyResponse)
+async def get_public_company_profile(
+        user_id: int,
+        session: AsyncSession = Depends(get_db)
+):
+    profile = await ProfileService.get_my_company_profile(session, user_id)
+
+    if not profile:
+        raise HTTPException(status_code=401, detail="Company not found")
+    return profile
+
+
+from sqlalchemy import select
+from app.db.models import Locality, Region
+
+
+@router.get("/locations/search")
+async def search_locations(q: str, session: AsyncSession = Depends(get_db)):
+    if len(q) < 2:
+        return []
+
+    # Ищем города, название которых начинается на введенные буквы
+    query = (
+        select(Locality.name, Region.name.label("region_name"))
+        .join(Region)
+        .where(Locality.name.ilike(f"{q}%"))
+        .limit(10)
+    )
+
+    result = await session.execute(query)
+    locations = result.all()
+
+    # Возвращаем список строк в формате "Город (Область)"
+    return [{"label": f"{loc.name} ({loc.region_name})", "value": f"{loc.name} ({loc.region_name})"} for loc in
+            locations]

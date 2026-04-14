@@ -1,0 +1,73 @@
+/* Базовые стили для динамического фона */
+.dynamic-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1; /* Отправляем на задний план */
+  overflow: hidden;
+  background-size: 400% 400%; /* Увеличиваем размер для анимации градиента */
+  animation: gradient-animation 15s ease infinite; /* Медленная анимация */
+}
+
+/* Анимация градиента */
+@keyframes gradient-animation {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Градиент для соискателя (Seeker) - светлая тема */
+.seeker-gradient {
+  background-image: linear-gradient(
+    -45deg,
+    theme('colors.background.light') 0%,
+    theme('colors.primary-seeker.light') 25%,
+    theme('colors.background.light') 50%,
+    theme('colors.primary-seeker.light') 75%,
+    theme('colors.background.light') 100%
+  );
+}
+
+/* Градиент для соискателя (Seeker) - темная тема */
+.dark .seeker-gradient {
+  background-image: linear-gradient(
+    -45deg,
+    theme('colors.background.dark') 0%,
+    theme('colors.primary-seeker.dark') 25%,
+    theme('colors.background.dark') 50%,
+    theme('colors.primary-seeker.dark') 75%,
+    theme('colors.background.dark') 100%
+  );
+}
+
+/* Градиент для работодателя (Employer) - светлая тема */
+.employer-gradient {
+  background-image: linear-gradient(
+    -45deg,
+    theme('colors.background.light') 0%,
+    theme('colors.primary-employer.light') 25%,
+    theme('colors.background.light') 50%,
+    theme('colors.primary-employer.light') 75%,
+    theme('colors.background.light') 100%
+  );
+}
+
+/* Градиент для работодателя (Employer) - темная тема */
+.dark .employer-gradient {
+  background-image: linear-gradient(
+    -45deg,
+    theme('colors.background.dark') 0%,
+    theme('colors.primary-employer.dark') 25%,
+    theme('colors.background.dark') 50%,
+    theme('colors.primary-employer.dark') 75%,
+    theme('colors.background.dark') 100%
+  );
+}
