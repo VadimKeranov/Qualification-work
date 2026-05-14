@@ -1,7 +1,5 @@
-version: '3.8'
-
 services:
-  # --- 1. База для Auth Service (Старая) ---
+  # --- 1. База для Auth Service ---
   db_auth:
     image: postgres:15
     container_name: auth_db_container
@@ -11,43 +9,61 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: auth_db
     ports:
-      - "5432:5432"  # Стандартный порт
+      - "5432:5432"
     volumes:
       - postgres_auth_data:/var/lib/postgresql/data
     networks:
       - app_network
 
-  # --- 2. База для Profile Service (НОВАЯ) ---
+  # --- 2. База для Profile Service ---
   db_profile:
     image: postgres:15
     container_name: profile_db_container
     restart: always
     environment:
-      POSTGRES_USER: profile_user      # Пользователь для профилей
+      POSTGRES_USER: profile_user
       POSTGRES_PASSWORD: profile_password
-      POSTGRES_DB: profile_db          # Имя базы
+      POSTGRES_DB: profile_db
     ports:
-      - "5433:5432"  # ВАЖНО: На компьютере это порт 5433, внутри контейнера 5432
+      - "5433:5432"
     volumes:
       - postgres_profile_data:/var/lib/postgresql/data
     networks:
       - app_network
 
-  vacancy_db:
+  # --- 3. База для Vacancy Service ---
+  db_vacancy:
     image: postgres:15
     container_name: vacancy_db_container
-    ports:
-      - "5434:5432"  # <-- Порт 5434, чтобы не конфликтовать с другими
+    restart: always
     environment:
       POSTGRES_USER: vacancy_user
       POSTGRES_PASSWORD: vacancy_password
       POSTGRES_DB: vacancy_db
+    ports:
+      - "5434:5432"
     volumes:
       - vacancy_db_data:/var/lib/postgresql/data
     networks:
       - app_network
 
-  # --- 3. RabbitMQ (Брокер сообщений) ---
+  # --- 4. База для Application Service ---
+  db_application:
+    image: postgres:15
+    container_name: application_db_container
+    restart: always
+    environment:
+      POSTGRES_USER: application_user
+      POSTGRES_PASSWORD: application_password
+      POSTGRES_DB: application_db
+    ports:
+      - "5435:5432"
+    volumes:
+      - application_db_data:/var/lib/postgresql/data
+    networks:
+      - app_network
+
+  # --- 5. RabbitMQ (Брокер сообщений) ---
   rabbitmq:
     image: rabbitmq:3-management
     container_name: rabbitmq_container
@@ -56,8 +72,65 @@ services:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
     ports:
-      - "5672:5672"   # Порт для общения сервисов
-      - "15672:15672" # Веб-интерфейс (http://localhost:15672)
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - app_network
+
+# --- 6. База для Notification Service ---
+  db_notification:
+    image: postgres:15
+    container_name: notification_db_container
+    restart: always
+    environment:
+      POSTGRES_USER: notification_user
+      POSTGRES_PASSWORD: notification_password
+      POSTGRES_DB: notification_db
+    ports:
+      - "5436:5432"
+    volumes:
+      - notification_db_data:/var/lib/postgresql/data
+    networks:
+      - app_network
+
+# --- 7. Prometheus (Збір метрик) ---
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus_container
+    restart: always
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # --- 8. Grafana (Візуалізація / Графіки) ---
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana_container
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - prometheus
+    networks:
+      - app_network
+
+  # --- 9. cAdvisor (Метрики CPU та RAM для контейнерів) ---
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor_container
+    restart: always
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
     networks:
       - app_network
 
@@ -69,3 +142,5 @@ volumes:
   postgres_auth_data:
   postgres_profile_data:
   vacancy_db_data:
+  application_db_data:
+  notification_db_data:

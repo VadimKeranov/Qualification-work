@@ -1,77 +1,82 @@
-import json
+import csv
 import asyncio
+from sqlalchemy import delete
 from sqlalchemy.future import select
-
-# Импортируйте вашу сессию БД (проверьте правильность пути, если он отличается)
 from app.db.session import AsyncSessionLocal
 from app.db.models import Region, Locality
 
 
 async def seed_data():
-    print("⏳ Читаем JSON файл...")
     try:
-        # Убедитесь, что ваш JSON файл называется именно так и лежит рядом со скриптом
-        with open("ua_locations.json", "r", encoding="utf-8") as file:
-            data = json.load(file)
+        with open("ua-name-places.csv", "r", encoding="utf-8") as file:
+            reader = csv.reader(file)
+            data = list(reader)
     except FileNotFoundError:
-        print("❌ Файл ua_locations.json не найден в корне проекта!")
+        print("❌ Файл ua_locations.csv не найден!")
         return
 
     async with AsyncSessionLocal() as session:
-        print("🔍 Собираем уникальные области...")
+        print("🗑 Очистка старой базы...")
+        await session.execute(delete(Locality))
+        await session.execute(delete(Region))
+        await session.commit()
 
-        # 1. Собираем все уникальные регионы из JSON (игнорируем пустые)
         unique_regions = set()
-        for item in data:
-            if item.get("region"):
-                unique_regions.add(item["region"])
+        for row in data:
+            # Индекс 10 — Область
+            if len(row) > 10 and row[10].strip():
+                unique_regions.add(row[10].strip().title())
 
-        # Словарь для связи: "НАЗВАНИЕ В JSON" -> ID в базе данных
         region_map = {}
-
-        print(f"📦 Найдено {len(unique_regions)} областей. Добавляем в базу...")
+        print(f"📦 Создание {len(unique_regions)} областей...")
         for r_name in unique_regions:
-            # Применяем .title(): "АВТОНОМНА РЕСПУБЛІКА КРИМ" -> "Автономна Республіка Крим"
-            pretty_region_name = r_name.title()
+            region = Region(name=r_name)
+            session.add(region)
+            await session.flush()
+            region_map[r_name.upper()] = region.id
 
-            # Проверяем, есть ли уже такая область в базе (защита от дублей)
-            result = await session.execute(select(Region).where(Region.name == pretty_region_name))
-            region = result.scalars().first()
-
-            if not region:
-                region = Region(name=pretty_region_name)
-                session.add(region)
-                await session.flush()  # Сохраняем в БД, чтобы сразу получить region.id
-
-            # Запоминаем ID для этой области
-            region_map[r_name] = region.id
-
-        print("🏙 Подготавливаем населенные пункты...")
         localities_to_add = []
-        for item in data:
-            r_name = item.get("region")
-            loc_name = item.get("object_name")
+        added_localities = set()
 
-            # Пропускаем кривые записи без региона или названия
+        type_mapping = {
+            "village": "Село",
+            "city": "Місто",
+            "town": "СМТ",
+            "settlement": "Селище"
+        }
+
+        print("🏘 Сбор населенных пунктов...")
+        for row in data:
+            if len(row) < 11:
+                continue
+
+            loc_name = row[4].strip()  # Индекс 4 — Украинское название
+            loc_type_raw = row[5].strip().lower()  # Индекс 5 — Тип
+            r_name = row[10].strip()  # Индекс 10 — Область
+
             if not r_name or not loc_name:
                 continue
 
-                # Применяем .title(): "ГРЕСІВСЬКИЙ" -> "Гресівський"
-            pretty_loc_name = loc_name.title()
+            r_id = region_map[r_name.title().upper()]
+            loc_key = f"{loc_name.title()}_{r_id}"
 
-            locality = Locality(
-                name=pretty_loc_name,
-                type=item.get("object_category", ""),  # "СМТ", "Місто", "Село"
-                region_id=region_map[r_name]  # Привязываем к правильной области
-            )
-            localities_to_add.append(locality)
+            if loc_key not in added_localities:
+                loc_type = type_mapping.get(loc_type_raw, loc_type_raw.title())
+                localities_to_add.append(Locality(
+                    name=loc_name.title(),
+                    type=loc_type,
+                    region_id=r_id
+                ))
+                added_localities.add(loc_key)
 
-        print(f"🚀 Сохраняем {len(localities_to_add)} населенных пунктов (это займет пару секунд)...")
-        # add_all позволяет сохранить все 30 000+ записей одним мощным запросом
-        session.add_all(localities_to_add)
-        await session.commit()
+        print(f"🚀 Сохранение {len(localities_to_add)} записей...")
+        # Сохраняем батчами по 5000 записей
+        batch_size = 5000
+        for i in range(0, len(localities_to_add), batch_size):
+            session.add_all(localities_to_add[i:i + batch_size])
+            await session.commit()
 
-        print("✅ База данных успешно заполнена населенными пунктами!")
+        print("✅ Успешно загружено!")
 
 
 if __name__ == "__main__":

@@ -1,9 +1,12 @@
 # api-gateway/app/main.py
 from fastapi import FastAPI
+from prometheus_fastapi_instrumentator import Instrumentator
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes.auth import router as auth_router  # <--- Импорт нового роутера
+from app.routes.auth import router as auth_router
 from app.routes.profiles import router as profiles_router
 from app.routes.vacancies import router as vacancies_router
+from app.routes.applications import router as applications_router
+
 
 def create_app() -> FastAPI:
     app = FastAPI(
@@ -23,7 +26,11 @@ def create_app() -> FastAPI:
     app.include_router(auth_router, prefix="/auth", tags=["Auth"])
     app.include_router(profiles_router, prefix="/profiles", tags=["Profiles"])
     app.include_router(vacancies_router, prefix="/vacancies", tags=["Vacancies"])
+    app.include_router(applications_router, prefix="/applications", tags=["Applications"]) # <--- 2. Подключаем роутер
+
     return app
 
 
 app = create_app()
+
+Instrumentator().instrument(app).expose(app)

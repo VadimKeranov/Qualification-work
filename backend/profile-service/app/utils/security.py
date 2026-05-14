@@ -1,20 +1,28 @@
-from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
+from fastapi import Depends, HTTPException
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from jose import jwt, JWTError, ExpiredSignatureError
 from app.config import settings
 
-# Ссылка просто для Swagger UI, валидация идет через JWT
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="http://localhost:8000/auth/login")
+# Простая проверка наличия Bearer токена в заголовке, без привязки к Swagger
+security = HTTPBearer()
 
-def get_current_user_payload(token: str = Depends(oauth2_scheme)) -> dict:
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+
+def get_current_user_payload(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
+    token = credentials.credentials
     try:
-        # Декодируем токен, используя тот же SECRET_KEY, что и в Auth Service
+        # 1. Расшифровываем токен
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        return payload
+
+        user_id_str = payload.get("sub")
+        role = payload.get("role")
+
+        if not user_id_str:
+            raise HTTPException(status_code=401, detail="У токені відсутній ідентифікатор користувача")
+
+        # 3. Возвращаем словарь с ключом "id", чтобы старые роуты не сломались!
+        return {"id": int(user_id_str), "role": role}
+
+    except ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Токен прострочено")
     except JWTError:
-        raise credentials_exception
+        raise HTTPException(status_code=401, detail="Недійсний токен")

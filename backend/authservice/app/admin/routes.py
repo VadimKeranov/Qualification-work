@@ -53,3 +53,4 @@ async def remove_user(
 ):
     await AdminService.delete_user_and_notify(session, user_id)
     return {"status": "User deleted and all services notified"}
+

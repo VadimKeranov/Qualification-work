@@ -1,4 +1,4 @@
-const API_URL = "http://127.0.0.1:8000";
+import { API_URL } from "./config";
 
 export async function register(data) {
   const res = await fetch(`${API_URL}/auth/register`, {
@@ -10,12 +10,31 @@ export async function register(data) {
 }
 
 export async function login(data) {
+  const formData = new URLSearchParams();
+  formData.append("username", data.email);
+  formData.append("password", data.password);
+
   const res = await fetch(`${API_URL}/auth/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body: formData,
   });
-  return res.json();
+
+  const responseData = await res.json();
+
+  // Генерируем исключение, если сервер ответил ошибкой (401, 403)
+  if (!res.ok) {
+    const error = new Error("Ошибка авторизации");
+    error.response = {
+      status: res.status,
+      data: responseData
+    };
+    throw error;
+  }
+
+  return responseData;
 }
 
 export async function getMe(token) {
@@ -23,13 +42,14 @@ export async function getMe(token) {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}` // Обязательно добавляем токен!
+      "Authorization": `Bearer ${token}`
     },
   });
 
-  if (!res.ok) {
-    throw new Error("Failed to fetch user");
-  }
+  const responseData = await res.json();
 
-  return res.json();
+  if (!res.ok) {
+    throw new Error("Ошибка получения профиля");
+  }
+  return responseData;
 }

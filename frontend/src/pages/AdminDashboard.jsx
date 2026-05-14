@@ -8,7 +8,6 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Новые состояния для фильтра и формы
   const [filterRole, setFilterRole] = useState("all");
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({ email: "", password: "", role: "worker" });
@@ -51,7 +50,7 @@ const AdminDashboard = () => {
     e.preventDefault();
     try {
       await createUser(token, formData);
-      await fetchUsers(); // Перезагружаем список после создания
+      await fetchUsers();
       setShowForm(false);
       setFormData({ email: "", password: "", role: "worker" });
     } catch (error) {
@@ -59,61 +58,66 @@ const AdminDashboard = () => {
     }
   };
 
-  if (user?.role !== "admin") return <div className="text-white p-10 text-center">Доступ запрещен</div>;
-  if (loading) return <div className="text-white p-10 text-center">Загрузка...</div>;
+  if (user?.role !== "admin") return <div className="p-10 text-center font-bold text-xl">Доступ заборонено</div>;
+  if (loading) return (
+    <div className="flex justify-center items-center h-64">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent"></div>
+    </div>
+  );
 
-  // Применяем фильтр
   const filteredUsers = users.filter(u => filterRole === "all" || u.role === filterRole);
 
+  const inputClass = "w-full bg-surface border border-black/10 dark:border-white/10 rounded-xl p-2.5 focus:border-accent focus:ring-1 focus:ring-accent outline-none transition";
+
   return (
-    <div className="max-w-5xl mx-auto p-6 bg-slate-800 rounded-lg mt-10">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-white">Панель Администратора</h1>
+    <div className="max-w-6xl mx-auto p-8 glass-panel rounded-3xl mt-10">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <h1 className="text-3xl font-bold">Панель Адміністратора</h1>
 
         {/* Фильтр и кнопка создания */}
-        <div className="flex gap-4 items-center">
+        <div className="flex gap-4 items-center w-full md:w-auto">
           <select
-            className="bg-slate-900 text-white border border-slate-600 rounded p-2"
+            className="bg-surface border border-black/10 dark:border-white/10 rounded-xl p-2.5 outline-none focus:border-accent transition"
             value={filterRole}
             onChange={(e) => setFilterRole(e.target.value)}
           >
-            <option value="all">Все роли</option>
-            <option value="worker">Соискатели (worker)</option>
-            <option value="employer">Компании (employer)</option>
-            <option value="admin">Админы (admin)</option>
+            <option value="all">Всі ролі</option>
+            <option value="worker">Шукачі (worker)</option>
+            <option value="employer">Компанії (employer)</option>
+            <option value="admin">Адміни (admin)</option>
           </select>
           <button
             onClick={() => setShowForm(!showForm)}
-            className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 rounded transition"
+            className="bg-accent text-white px-5 py-2.5 rounded-xl shadow-accent hover:brightness-110 transition active:scale-95 whitespace-nowrap"
           >
-            {showForm ? "Скрыть форму" : "+ Создать"}
+            {showForm ? "Сховати форму" : "+ Створити"}
           </button>
         </div>
       </div>
 
       {/* Форма создания пользователя */}
       {showForm && (
-        <form onSubmit={handleCreateUser} className="bg-slate-900 p-4 rounded-lg mb-6 flex gap-4 items-end">
-          <div className="flex-1">
-            <label className="text-slate-400 text-sm block mb-1">Email</label>
+        <form onSubmit={handleCreateUser} className="bg-surface border border-black/5 dark:border-white/5 p-6 rounded-2xl mb-8 flex flex-col md:flex-row gap-4 items-end shadow-inner">
+          <div className="flex-1 w-full">
+            <label className="text-muted text-sm block mb-1.5 font-medium">Email</label>
             <input
               required type="email"
-              className="w-full bg-slate-800 text-white border border-slate-600 rounded p-2"
+              className={inputClass}
               value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})}
             />
           </div>
-          <div className="flex-1">
-            <label className="text-slate-400 text-sm block mb-1">Пароль</label>
+          <div className="flex-1 w-full">
+            <label className="text-muted text-sm block mb-1.5 font-medium">Пароль</label>
             <input
               required type="password"
-              className="w-full bg-slate-800 text-white border border-slate-600 rounded p-2"
+              className={inputClass}
               value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})}
             />
           </div>
-          <div>
-            <label className="text-slate-400 text-sm block mb-1">Роль</label>
+          <div className="w-full md:w-auto">
+            <label className="text-muted text-sm block mb-1.5 font-medium">Роль</label>
             <select
-              className="bg-slate-800 text-white border border-slate-600 rounded p-2"
+              className={inputClass}
               value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}
             >
               <option value="worker">Worker</option>
@@ -121,64 +125,70 @@ const AdminDashboard = () => {
               <option value="admin">Admin</option>
             </select>
           </div>
-          <button type="submit" className="bg-green-600 hover:bg-green-500 text-white px-6 py-2 rounded transition">
-            Сохранить
+          <button type="submit" className="w-full md:w-auto bg-accent text-white px-8 py-2.5 rounded-xl shadow-accent hover:brightness-110 transition font-medium">
+            Зберегти
           </button>
         </form>
       )}
 
-      <table className="w-full text-left text-white">
-        <thead>
-          <tr className="border-b border-slate-600">
-            <th className="p-2">ID</th>
-            <th className="p-2">Email</th>
-            <th className="p-2">Роль</th>
-            <th className="p-2">Профиль</th>
-            <th className="p-2">Действия</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredUsers.map((u) => {
-            const isMe = u.id === user.id; // Проверка, является ли строка самим админом
+      {/* Таблица */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="border-b border-black/10 dark:border-white/10 text-muted text-sm uppercase tracking-wider">
+              <th className="p-4 font-medium">ID</th>
+              <th className="p-4 font-medium">Email</th>
+              <th className="p-4 font-medium">Роль</th>
+              <th className="p-4 font-medium">Профіль</th>
+              <th className="p-4 font-medium text-right">Дії</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredUsers.map((u) => {
+              const isMe = u.id === user.id;
 
-            return (
-              <tr key={u.id} className="border-b border-slate-700">
-                <td className="p-2">{u.id}</td>
-                <td className="p-2">{u.email} {isMe && <span className="text-cyan-500 text-xs ml-2">(Вы)</span>}</td>
-                <td className="p-2">
-                  <select
-                    className="bg-slate-900 border border-slate-600 rounded p-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                    value={u.role}
-                    onChange={(e) => handleRoleChange(u.id, e.target.value)}
-                    disabled={isMe} // Нельзя менять роль самому себе
-                  >
-                    <option value="worker">Worker</option>
-                    <option value="employer">Employer</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                </td>
-                <td className="p-2">
-                  <Link
-                    to={`/profile/${u.id}`}
-                    className="text-blue-400 hover:text-blue-300 underline text-sm"
-                  >
-                    Перейти
-                  </Link>
-                </td>
-                <td className="p-2">
-                  <button
-                    onClick={() => handleDelete(u.id)}
-                    disabled={isMe} // Нельзя удалить самого себя
-                    className="bg-red-600 hover:bg-red-500 disabled:bg-slate-600 disabled:text-slate-400 text-white px-3 py-1 rounded transition"
-                  >
-                    Удалить
-                  </button>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+              return (
+                <tr key={u.id} className="border-b border-black/5 dark:border-white/5 hover:bg-black/5 dark:hover:bg-white/5 transition">
+                  <td className="p-4 font-mono text-sm opacity-70">{u.id}</td>
+                  <td className="p-4 font-medium">
+                    {u.email} {isMe && <span className="text-accent text-xs ml-2 bg-accent/10 px-2 py-1 rounded-md">Ви</span>}
+                  </td>
+                  <td className="p-4">
+                    <select
+                      className="bg-surface border border-black/10 dark:border-white/10 rounded-lg p-1.5 text-sm outline-none focus:border-accent disabled:opacity-50 disabled:cursor-not-allowed transition"
+                      value={u.role}
+                      onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                      disabled={isMe}
+                    >
+                      <option value="worker">Worker</option>
+                      <option value="employer">Employer</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </td>
+                  <td className="p-4">
+                    {/* Если админ кликнет на чужой профиль, он попадет на него (убедись что этот маршрут настроен) */}
+                    <Link
+                      to={`/profile/${u.id}`}
+                      className="text-accent hover:opacity-80 underline text-sm font-medium"
+                    >
+                      Перейти
+                    </Link>
+                  </td>
+                  <td className="p-4 text-right">
+                    <button
+                      onClick={() => handleDelete(u.id)}
+                      disabled={isMe}
+                      className="bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white disabled:bg-surface disabled:text-muted px-4 py-1.5 rounded-lg transition font-medium text-sm"
+                    >
+                      Видалити
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };

@@ -1,1 +1,0 @@
-from .profile import JobSeekerUpdate, JobSeekerResponse, CompanyUpdate, CompanyResponse

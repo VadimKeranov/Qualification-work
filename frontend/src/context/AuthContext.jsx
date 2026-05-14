@@ -6,12 +6,13 @@ const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem("access_token"));
+  // Используем ключ "token" для консистентности со всем приложением
+  const [token, setToken] = useState(localStorage.getItem("token"));
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const initAuth = async () => {
-      const storedToken = localStorage.getItem("access_token");
+      const storedToken = localStorage.getItem("token");
       if (storedToken) {
         try {
           const userData = await getMe(storedToken);
@@ -28,7 +29,8 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     const data = await apiLogin({ email, password });
     if (data.access_token) {
-      localStorage.setItem("access_token", data.access_token);
+      // Сохраняем тоже под ключом "token"
+      localStorage.setItem("token", data.access_token);
       setToken(data.access_token);
       const userData = await getMe(data.access_token);
       setUser(userData);
@@ -36,9 +38,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    localStorage.removeItem("access_token");
+    localStorage.removeItem("token");
     setToken(null);
     setUser(null);
+    // Добавляем редирект на главную страницу при выходе
+    window.location.href = '/';
   };
 
   return (
@@ -48,12 +52,11 @@ export const AuthProvider = ({ children }) => {
       login,
       logout,
       loading,
-      isAuthenticated: !!user // Решает проблему белого экрана в Layout
+      isAuthenticated: !!user
     }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-// ВОТ ЭТА СТРОКА ДОЛЖНА БЫТЬ ОБЯЗАТЕЛЬНО:
 export const useAuth = () => useContext(AuthContext);

@@ -1,7 +1,9 @@
+from sqlalchemy import select, update
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.vacancies.repository import VacancyRepository
 from app.vacancies.schemas import VacancyCreate
+from app.db.models import Vacancy
 
 class VacancyService:
     @staticmethod
@@ -25,3 +27,13 @@ class VacancyService:
     @staticmethod
     async def get_vacancies_by_company(session: AsyncSession, company_id: int):
         return await VacancyRepository.get_by_company(session, company_id)
+
+    @staticmethod
+    async def sync_company_data(session: AsyncSession, company_id: int, name: str, logo: str | None):
+        query = (
+            update(Vacancy)
+            .where(Vacancy.owner_id == company_id)
+            .values(company_name=name, company_logo=logo)
+        )
+        await session.execute(query)
+        await session.commit()

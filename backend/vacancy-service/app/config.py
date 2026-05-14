@@ -1,14 +1,12 @@
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    # Настройки БД
-    DATABASE_URL: str
+    # Исправляем путь: пользователь, пароль, порт и имя базы должны совпадать с Docker
+    DATABASE_URL: str = "postgresql+asyncpg://application_user:application_password@localhost:5435/application_db"
 
-    # Настройки JWT для валидации токена
-    SECRET_KEY: str
+    SECRET_KEY: str = "твой_секретный_ключ"
     ALGORITHM: str = "HS256"
-
-    # Настройки CORS
+    RABBITMQ_URL: str = "amqp://guest:guest@localhost/"
     ALLOWED_ORIGINS: str = "http://localhost:5173"
 
     class Config:

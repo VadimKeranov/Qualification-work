@@ -1,5 +1,21 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List
+from datetime import datetime
+
+# --- Новые схемы для откликов ---
+class VacancyForApplication(BaseModel):
+    """Упрощенная информация о вакансии для отображения в отклике."""
+    id: int
+    title: str
+
+class ApplicationForSeekerProfile(BaseModel):
+    """Информация об отклике для профиля соискателя."""
+    id: int
+    status: str
+    created_at: datetime
+    vacancy: VacancyForApplication # Вложенная информация о вакансии
+
+# --- Существующие схемы ---
 
 class ResumeItemResponse(BaseModel):
     id: int
@@ -24,8 +40,8 @@ class JobSeekerResponse(JobSeekerUpdate):
     id: int
     user_id: int
     photo_url: Optional[str] = None
-    # 2. УБИРАЕМ старое поле resume_file_url и ДОБАВЛЯЕМ СПИСОК РЕЗЮМЕ:
     resumes: List[ResumeItemResponse] = []
+    applications: List[ApplicationForSeekerProfile] = [] # <--- Добавлено поле для откликов
 
     class Config:
         from_attributes = True
@@ -56,6 +72,7 @@ class VacancyForCompanyPage(BaseModel):
     title: str
     salary_from: Optional[int] = None
     salary_to: Optional[int] = None
+    applications_count: int = 0 # <--- Добавлено поле для счетчика откликов
 
     class Config:
         from_attributes = True

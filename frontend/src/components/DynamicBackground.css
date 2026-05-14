@@ -1,38 +1,30 @@
-/* Базовые стили для динамического фона */
 .dynamic-background {
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  z-index: -1; /* Отправляем на задний план */
+  z-index: -1;
   overflow: hidden;
-  background-size: 400% 400%; /* Увеличиваем размер для анимации градиента */
-  animation: gradient-animation 15s ease infinite; /* Медленная анимация */
+  background-size: 400% 400%;
+  animation: gradient-animation 15s ease infinite;
 }
 
-/* Анимация градиента */
 @keyframes gradient-animation {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
 /* Градиент для соискателя (Seeker) - светлая тема */
 .seeker-gradient {
   background-image: linear-gradient(
     -45deg,
-    theme('colors.background.light') 0%,
-    theme('colors.primary-seeker.light') 25%,
-    theme('colors.background.light') 50%,
-    theme('colors.primary-seeker.light') 75%,
-    theme('colors.background.light') 100%
+    var(--color-app-background-light) 0%,
+    var(--color-seeker-primary-light) 25%,
+    var(--color-app-background-light) 50%,
+    var(--color-seeker-primary-light) 75%,
+    var(--color-app-background-light) 100%
   );
 }
 
@@ -40,11 +32,11 @@
 .dark .seeker-gradient {
   background-image: linear-gradient(
     -45deg,
-    theme('colors.background.dark') 0%,
-    theme('colors.primary-seeker.dark') 25%,
-    theme('colors.background.dark') 50%,
-    theme('colors.primary-seeker.dark') 75%,
-    theme('colors.background.dark') 100%
+    var(--color-app-background-dark) 0%,
+    var(--color-seeker-primary-dark) 25%,
+    var(--color-app-background-dark) 50%,
+    var(--color-seeker-primary-dark) 75%,
+    var(--color-app-background-dark) 100%
   );
 }
 
@@ -52,11 +44,11 @@
 .employer-gradient {
   background-image: linear-gradient(
     -45deg,
-    theme('colors.background.light') 0%,
-    theme('colors.primary-employer.light') 25%,
-    theme('colors.background.light') 50%,
-    theme('colors.primary-employer.light') 75%,
-    theme('colors.background.light') 100%
+    var(--color-app-background-light) 0%,
+    var(--color-employer-primary-light) 25%,
+    var(--color-app-background-light) 50%,
+    var(--color-employer-primary-light) 75%,
+    var(--color-app-background-light) 100%
   );
 }
 
@@ -64,10 +56,10 @@
 .dark .employer-gradient {
   background-image: linear-gradient(
     -45deg,
-    theme('colors.background.dark') 0%,
-    theme('colors.primary-employer.dark') 25%,
-    theme('colors.background.dark') 50%,
-    theme('colors.primary-employer.dark') 75%,
-    theme('colors.background.dark') 100%
+    var(--color-app-background-dark) 0%,
+    var(--color-employer-primary-dark) 25%,
+    var(--color-app-background-dark) 50%,
+    var(--color-employer-primary-dark) 75%,
+    var(--color-app-background-dark) 100%
   );
 }

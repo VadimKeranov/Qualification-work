@@ -15,13 +15,21 @@ dependencies = [
     "alembic (>=1.18.4,<2.0.0)",
     "pydantic-settings (>=2.12.0,<3.0.0)",
     "python-dotenv (>=1.2.1,<2.0.0)",
-    "python-jose[cryptography] (>=3.5.0,<4.0.0)",
     "python-multipart (>=0.0.22,<0.0.23)",
     "aio-pika (>=9.6.2,<10.0.0)",
-    "httpx (>=0.28.1,<0.29.0)"
+    "httpx (>=0.28.1,<0.29.0)",
+    "psycopg2-binary (>=2.9.11,<3.0.0)",
+    "aiofiles (>=25.1.0,<26.0.0)",
+    "python-jose[cryptography] (>=3.5.0,<4.0.0)",
+    "prometheus-fastapi-instrumentator (>=7.1.0,<8.0.0)",
 ]
 
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[dependency-groups]
+dev = [
+    "radon (>=6.0.1,<7.0.0)"
+]

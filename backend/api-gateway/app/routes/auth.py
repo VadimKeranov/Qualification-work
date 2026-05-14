@@ -6,7 +6,7 @@ router = APIRouter()
 
 @router.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
 async def proxy_auth(path: str, request: Request):
-    target_url = f"{AUTH_SERVICE_URL}/auth/{path}"
+    target_url = f"{AUTH_SERVICE_URL}{request.url.path}"
 
     headers = dict(request.headers)
     headers.pop("host", None)

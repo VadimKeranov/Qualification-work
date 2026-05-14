@@ -3,10 +3,11 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 
+
 # Импорты твоих модулей (обрати внимание на точки)
 from app.db.session import engine, AsyncSessionLocal
 from app.auth.repository import UserRepository
-from app.utils.jwt import SECRET_KEY, ALGORITHM  # Берем настройки из твоего файла
+from app.config import settings
 
 from app.db.models import User
 
@@ -31,21 +32,22 @@ async def get_current_user(
     )
 
     try:
-        # 1. Декодируем токен
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        # 1. Декодуємо токен
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
 
-        # В payload.get("sub") мы обычно кладем email (или id), посмотри как в create_access_token
-        # Если в create_access_token ты клал {"sub": user.email}, то достаем email:
-        email: str = payload.get("sub")
+        # Дістаємо ID користувача (тепер це user_id, а не email!)
+        user_id_str: str = payload.get("sub")
 
-        if email is None:
+        if user_id_str is None:
             raise credentials_exception
-    except JWTError:
+
+        user_id = int(user_id_str)  # Перетворюємо на число
+
+    except (JWTError, ValueError):
         raise credentials_exception
 
-    # 2. Ищем пользователя в БД
-    # Если метода get_by_email еще нет в репозитории, нужно добавить (см. ниже)
-    user = await UserRepository.get_by_email(session, email)
+    # 2. Шукаємо користувача в БД за ID за допомогою твого нового методу
+    user = await UserRepository.get_by_id(session, user_id)
 
     if user is None:
         raise credentials_exception

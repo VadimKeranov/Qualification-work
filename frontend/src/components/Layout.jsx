@@ -1,31 +1,37 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Header from "./Header";
-import { useAuth } from "../context/AuthContext"; // Импортируем контекст
+import { useAuth } from "../context/AuthContext";
 
 const Layout = ({ children }) => {
-  const { user } = useAuth(); // Используем наличие объекта user
-  const isAuthenticated = !!user;
+  const { user } = useAuth();
+  const [isDark, setIsDark] = useState(localStorage.getItem('theme') === 'dark');
 
-  // Разные фоны для разных состояний
-  const backgroundClass = isAuthenticated
-    ? "bg-slate-900 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-800 via-slate-900 to-black" // Спокойный рабочий фон
-    : "bg-black bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-slate-900 via-black to-black"; // Глубокий черный для гостей
+  useEffect(() => {
+    const root = window.document.documentElement;
+    isDark ? root.classList.add('dark') : root.classList.remove('dark');
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+
+    // Обновление CSS переменных акцента
+    const hex = !isDark ? '#A855F7' : (user?.role === 'employer' ? '#BF5AF2' : '#00F2FE');
+    const rgb = !isDark ? '168, 85, 247' : (user?.role === 'employer' ? '191, 90, 242' : '0, 242, 254');
+    root.style.setProperty('--accent', hex);
+    root.style.setProperty('--accent-rgb', rgb);
+  }, [isDark, user]);
 
   return (
-    <div className={`min-h-screen flex flex-col text-slate-200 transition-colors duration-500 ${backgroundClass}`}>
-      <Header />
+    <div className="min-h-screen flex flex-col relative">
 
-      {/* Если не залогинен — добавляем декоративную сетку на фон */}
-      {!isAuthenticated && (
-        <div className="fixed inset-0 z-0 pointer-events-none opacity-20 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
-      )}
+      {/* 1. Передаем пропсы в хедер, чтобы работала новая красивая SVG-кнопка */}
+      <Header isDark={isDark} setIsDark={setIsDark} />
 
-      <main className="flex-grow container mx-auto px-4 py-8 z-10 relative">
+      {/* 2. Старую кнопку <div className="theme-fab">...</div> мы отсюда полностью УДАЛИЛИ */}
+
+      <main className="flex-grow container mx-auto px-4 relative z-10">
         {children}
       </main>
 
-      <footer className="border-t border-slate-800 py-6 text-center text-slate-600 text-sm z-10 relative">
-        <p>&copy; 2026 JobBoard. System Active.</p>
+      <footer className="py-8 mt-12 text-center text-muted glass-panel">
+        <p>&copy; 2026 JobFlow. System Active.</p>
       </footer>
     </div>
   );

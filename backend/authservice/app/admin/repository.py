@@ -9,10 +9,10 @@ class AdminRepository:
         return result.scalars().all()
 
     @staticmethod
-    async def create_user(session: AsyncSession, email: str, hashed_password: str, role: str):
-        new_user = User(email=email, password_hash=hashed_password, role=role)
+    async def create_user(session: AsyncSession, email: str, hashed_password: str, role: str, is_active: bool = True):
+        new_user = User(email=email, password_hash=hashed_password, role=role, is_active=is_active)
         session.add(new_user)
-        await session.flush()  # Получаем ID до коммита
+        await session.flush()
         await session.commit()
         return new_user
 
@@ -26,4 +26,9 @@ class AdminRepository:
         await session.execute(
             update(User).where(User.id == user_id).values(role=new_role)
         )
+        await session.commit()
+
+    @staticmethod
+    async def activate_user(session: AsyncSession, user_id: int):
+        await session.execute(update(User).where(User.id == user_id).values(is_active=True))
         await session.commit()
