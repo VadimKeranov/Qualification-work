@@ -1,12 +1,18 @@
 import httpx
+import logging
 from fastapi import APIRouter, Request, HTTPException, Response
 from app.config import AUTH_SERVICE_URL
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+
 
 @router.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
-async def proxy_auth(path: str, request: Request):
+@router.api_route("/", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
+async def proxy_auth(request: Request, path: str = ""):
     target_url = f"{AUTH_SERVICE_URL}{request.url.path}"
+
+    logger.info(f"Proxying request to Auth Service: {target_url}")
 
     headers = dict(request.headers)
     headers.pop("host", None)
@@ -20,12 +26,12 @@ async def proxy_auth(path: str, request: Request):
                 content=body,
                 headers=headers,
                 params=request.query_params,
+                timeout=10.0
             )
 
             response_headers = dict(proxy_response.headers)
-            response_headers.pop("content-encoding", None)
-            response_headers.pop("content-length", None)
-            response_headers.pop("transfer-encoding", None)
+            for h in ["content-encoding", "content-length", "transfer-encoding"]:
+                response_headers.pop(h, None)
 
             return Response(
                 content=proxy_response.content,
@@ -34,4 +40,5 @@ async def proxy_auth(path: str, request: Request):
                 media_type=proxy_response.headers.get("content-type"),
             )
         except httpx.RequestError as exc:
-            raise HTTPException(status_code=503, detail=f"Auth Service is unavailable: {exc}")
+            logger.error(f"Connection error to Auth Service ({target_url}): {exc}")
+            raise HTTPException(status_code=503, detail="Auth Service unavailable")

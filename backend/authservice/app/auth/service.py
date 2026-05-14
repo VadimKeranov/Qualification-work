@@ -1,4 +1,5 @@
 import datetime
+import logging
 from jose import jwt
 from fastapi import HTTPException
 
@@ -10,15 +11,20 @@ from app.auth.repository import UserRepository
 from app.utils.password import hash_password, verify_password
 from app.utils.jwt import create_access_token
 from app.db.models import User
-from app.core.messaging import EventProducer  # <--- Новый импорт
+from app.core.messaging import EventProducer
 from app.config import settings
+
+# Ініціалізуємо логер
+logger = logging.getLogger(__name__)
 
 class AuthService:
 
     @staticmethod
     async def register(session: AsyncSession, email: str, password: str, role: str):
+        logger.info(f"Attempting to register user: {email} with role: '{role}'")
         existing_user = await UserRepository.get_by_email(session, email)
         if existing_user:
+            logger.warning(f"Registration failed: User {email} already exists.")
             return None
 
         hashed_pwd = hash_password(password)
@@ -31,6 +37,7 @@ class AuthService:
         verification_token = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
         await EventProducer.publish_email_verification(created_user.email, verification_token)
+        logger.info(f"User {email} successfully registered (ID: {created_user.id}). Verification email sent.")
         return created_user
 
     @staticmethod
@@ -41,23 +48,25 @@ class AuthService:
             token_type = payload.get("type")
 
             if token_type != "email_verification" or not user_id_str:
+                logger.warning("Email verification failed: Invalid token type or missing user ID.")
                 return False
 
             user_id = int(user_id_str)
-
             user = await UserRepository.get_by_id(session, user_id)
 
             if not user or user.is_active:
+                logger.warning(f"Email verification failed: User {user_id} not found or already active.")
                 return False
 
             user.is_active = True
             await session.commit()
 
             await EventProducer.publish_user_created(user.id, user.role)
-
+            logger.info(f"User {user.email} (ID: {user.id}) successfully verified email and activated.")
             return True
 
-        except (JWTError, ValueError):
+        except (JWTError, ValueError) as e:
+            logger.error(f"Email verification failed due to token error: {str(e)}")
             return False
 
     @staticmethod
@@ -65,8 +74,10 @@ class AuthService:
         user = await UserRepository.get_by_email(session, email)
 
         if not user:
+            logger.warning(f"Resend verification failed: User {email} not found.")
             return False, "Користувача не знайдено."
         if user.is_active:
+            logger.info(f"Resend verification skipped: User {email} is already active.")
             return False, "Електронна пошта вже підтверджена."
 
         # Генеруємо новий токен
@@ -76,21 +87,26 @@ class AuthService:
 
         # Відправляємо в RabbitMQ
         await EventProducer.publish_email_verification(user.email, verification_token)
+        logger.info(f"Verification email successfully resent to {email}.")
 
         return True, "Лист для підтвердження відправлено повторно."
 
 
     @staticmethod
     async def login(session: AsyncSession, email: str, password: str):
+        logger.info(f"Login attempt for user: {email}")
         user = await UserRepository.get_by_email(session, email)
 
         if not user or not verify_password(password, user.password_hash):
+            logger.warning(f"Login failed for {email}: Invalid credentials.")
             return None
 
         if not user.is_active:
+            logger.warning(f"Login failed for {email}: Account is not activated.")
             raise HTTPException(
                 status_code=403,
                 detail="Будь ласка, підтвердіть вашу електронну пошту. Лист відправлено на вказану адресу."
             )
 
+        logger.info(f"User {email} successfully logged in.")
         return create_access_token(data={"sub": str(user.id), "role": user.role})

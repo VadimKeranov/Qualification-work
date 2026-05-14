@@ -1,15 +1,16 @@
 import httpx
+import logging
 from fastapi import APIRouter, Request, HTTPException, Response
 from app.config import PROFILE_SERVICE_URL
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 @router.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
 @router.api_route("/", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
 async def proxy_profiles(request: Request, path: str = ""):
-    # request.url.path берет полный путь (например, "/profiles/seeker/me")
     target_url = f"{PROFILE_SERVICE_URL}{request.url.path}"
-    print(f"--- GATEWAY PROXY PROFILES TO: {target_url} ---")
+    logger.info(f"--- GATEWAY PROXY PROFILES TO: {target_url} ---")
 
     headers = dict(request.headers)
     headers.pop("host", None)
@@ -37,4 +38,5 @@ async def proxy_profiles(request: Request, path: str = ""):
                 media_type=proxy_response.headers.get("content-type"),
             )
         except httpx.RequestError as exc:
-            raise HTTPException(status_code=503, detail=f"Profile Service is unavailable: {exc}")
+            logger.error(f"Connection error to {target_url}: {exc}")
+            raise HTTPException(status_code=503, detail="Profile Service unavailable")

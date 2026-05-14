@@ -1,15 +1,16 @@
 import httpx
+import logging
 from fastapi import APIRouter, Request, HTTPException, Response
 from app.config import VACANCY_SERVICE_URL
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 @router.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
 @router.api_route("/", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
 async def proxy_vacancies(request: Request, path: str = ""):
-    # request.url.path берет полный путь (например, "/vacancies/")
     target_url = f"{VACANCY_SERVICE_URL}{request.url.path}"
-    print(f"--- GATEWAY PROXY VACANCIES TO: {target_url} ---")
+    logger.info(f"Proxying to Vacancy Service: {target_url}")
 
     headers = dict(request.headers)
     headers.pop("host", None)
@@ -23,12 +24,13 @@ async def proxy_vacancies(request: Request, path: str = ""):
                 content=body,
                 headers=headers,
                 params=request.query_params,
+                timeout=10.0
             )
 
             response_headers = dict(proxy_response.headers)
-            response_headers.pop("content-encoding", None)
-            response_headers.pop("content-length", None)
-            response_headers.pop("transfer-encoding", None)
+            # Очистка заголовков для предотвращения ошибок передачи
+            for h in ["content-encoding", "content-length", "transfer-encoding"]:
+                response_headers.pop(h, None)
 
             return Response(
                 content=proxy_response.content,
@@ -37,4 +39,5 @@ async def proxy_vacancies(request: Request, path: str = ""):
                 media_type=proxy_response.headers.get("content-type"),
             )
         except httpx.RequestError as exc:
-            raise HTTPException(status_code=503, detail=f"Vacancy Service is unavailable: {exc}")
+            logger.error(f"Connection error to {target_url}: {exc}")
+            raise HTTPException(status_code=503, detail="Vacancy Service unavailable")
